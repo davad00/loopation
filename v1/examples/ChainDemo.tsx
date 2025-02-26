@@ -22,12 +22,17 @@ export const ChainDemo: React.FC<ChainDemoProps> = ({
   const [simulationSpeed, setSimulationSpeed] = useState(1);
   const [chainType, setChainType] = useState<'hanging' | 'pendulum' | 'bridge'>('hanging');
   const [showEffects, setShowEffects] = useState(true);
+  const [showCodeExport, setShowCodeExport] = useState(false);
   
   const chainRef = useRef<Chain | null>(null);
   const draggedPointRef = useRef<number | null>(null);
   
   const toggleControlsVisibility = () => {
     setShowControls(!showControls);
+  };
+
+  const toggleCodeExport = () => {
+    setShowCodeExport(!showCodeExport);
   };
 
   const resetSimulation = () => {
@@ -278,6 +283,91 @@ export const ChainDemo: React.FC<ChainDemoProps> = ({
     }
   };
 
+  const generateCode = () => {
+    return `import React from 'react';
+import { ChainCanvas } from 'loopation';
+
+const ChainExample = () => {
+  const setupChain = (chain) => {
+    // Create a ${chainType} chain
+    ${chainType === 'hanging' 
+      ? `// Create a hanging chain with ${links} links, each ${linkLength}px long
+    chain.createChain(100, 50, ${links}, ${linkLength}, 5);`
+      : chainType === 'pendulum'
+      ? `// Create a pendulum chain with ${links} links
+    // First create the anchor point
+    const anchorPoint = new Point(width / 2, 50, { fixed: true });
+    const anchorIndex = chain.addPoint(anchorPoint);
+    
+    // Create chain links
+    let prevIndex = anchorIndex;
+    for (let i = 0; i < ${links}; i++) {
+      const point = new Point(
+        width / 2 + (i === 0 ? 50 : 0), 
+        50 + (i + 1) * ${linkLength}
+      );
+      const pointIndex = chain.addPoint(point);
+      chain.addDistanceConstraint(prevIndex, pointIndex, ${linkLength});
+      prevIndex = pointIndex;
+    }
+    
+    // Add weight to the end
+    chain.points[chain.points.length - 1].mass = 2;`
+      : `// Create a bridge chain with ${links} links
+    // Create fixed endpoints for the bridge
+    const leftAnchor = new Point(width / 4, height / 3, { fixed: true });
+    const leftIndex = chain.addPoint(leftAnchor);
+    
+    const rightAnchor = new Point(3 * width / 4, height / 3, { fixed: true });
+    const rightIndex = chain.addPoint(rightAnchor);
+    
+    // Calculate link spacing
+    const bridgeWidth = rightAnchor.position.x - leftAnchor.position.x;
+    const segmentLength = bridgeWidth / (${links} + 1);
+    
+    // Create bridge segments
+    const bridgePoints = [];
+    for (let i = 1; i <= ${links}; i++) {
+      const point = new Point(
+        leftAnchor.position.x + i * segmentLength,
+        leftAnchor.position.y + Math.sin((i / (${links} + 1)) * Math.PI) * 20
+      );
+      const pointIndex = chain.addPoint(point);
+      bridgePoints.push(pointIndex);
+    }
+    
+    // Connect all points with distance constraints
+    chain.addDistanceConstraint(leftIndex, bridgePoints[0], segmentLength);
+    
+    for (let i = 0; i < bridgePoints.length - 1; i++) {
+      chain.addDistanceConstraint(
+        bridgePoints[i],
+        bridgePoints[i + 1],
+        segmentLength
+      );
+    }
+    
+    chain.addDistanceConstraint(
+      bridgePoints[bridgePoints.length - 1],
+      rightIndex,
+      segmentLength
+    );`}
+  };
+
+  return (
+    <ChainCanvas
+      width={${width}}
+      height={${height}}
+      chainSetup={setupChain}
+      gravity={{ x: ${gravity.x}, y: ${gravity.y} }}
+      iterations={10}
+    />
+  );
+};
+
+export default ChainExample;`;
+  };
+
   const styles = {
     chainDemo: {
       width: '100%',
@@ -432,6 +522,31 @@ export const ChainDemo: React.FC<ChainDemoProps> = ({
       fontWeight: 600,
       marginBottom: '10px',
       color: '#343a40'
+    },
+    codeExport: {
+      marginTop: '20px',
+      padding: '15px',
+      background: '#f8f9fa',
+      borderRadius: '8px'
+    },
+    codeBlock: {
+      background: '#343a40',
+      color: '#f8f9fa',
+      padding: '15px',
+      borderRadius: '4px',
+      overflow: 'auto',
+      fontSize: '14px',
+      lineHeight: 1.5,
+      fontFamily: 'monospace'
+    },
+    copyButton: {
+      background: '#6c757d',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      padding: '8px 16px',
+      cursor: 'pointer',
+      marginTop: '10px'
     }
   };
 
@@ -607,6 +722,24 @@ export const ChainDemo: React.FC<ChainDemoProps> = ({
               >
                 Reset Simulation
               </button>
+              
+              <button 
+                onClick={toggleCodeExport}
+                style={{
+                  ...styles.button,
+                  marginTop: '15px'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 123, 255, 0.3)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = '';
+                  e.currentTarget.style.boxShadow = '';
+                }}
+              >
+                {showCodeExport ? 'Hide Code' : 'Export Code'}
+              </button>
             </div>
           </div>
         )}
@@ -631,6 +764,24 @@ export const ChainDemo: React.FC<ChainDemoProps> = ({
           chainSetup={chainSetup}
         />
       </div>
+      
+      {showCodeExport && (
+        <div style={styles.codeExport}>
+          <h3>Generated Code</h3>
+          <pre style={styles.codeBlock}>
+            {generateCode()}
+          </pre>
+          <button 
+            style={styles.copyButton}
+            onClick={() => {
+              navigator.clipboard.writeText(generateCode());
+              alert('Code copied to clipboard!');
+            }}
+          >
+            Copy to Clipboard
+          </button>
+        </div>
+      )}
       
       <div style={styles.instructions}>
         <h3 style={styles.instructionsTitle}>How It Works:</h3>

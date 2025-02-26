@@ -34,6 +34,7 @@ export const FabricDemo: React.FC<FabricDemoProps> = ({
   const [autoAnimate, setAutoAnimate] = useState(true);
   const [mousePosition, setMousePosition] = useState({ x: width / 2, y: height / 2 });
   const [showControls, setShowControls] = useState(true);
+  const [showCodeExport, setShowCodeExport] = useState(false);
   
   // For automated movement
   useEffect(() => {
@@ -290,6 +291,10 @@ export const FabricDemo: React.FC<FabricDemoProps> = ({
     setShowControls(!showControls);
   };
   
+  const toggleCodeExport = () => {
+    setShowCodeExport(!showCodeExport);
+  };
+  
   const toggleTheme = () => {
     setTheme(theme === 'spider' ? 'alien' : 'spider');
   };
@@ -299,6 +304,71 @@ export const FabricDemo: React.FC<FabricDemoProps> = ({
       // Recreating the creature will reset it
       handleFabricInit({ fabric: fabricRef.current });
     }
+  };
+
+  const generateCode = () => {
+    return `import React, { useRef } from 'react';
+import { FabricCanvas } from 'loopation';
+
+const InverseKinematicsExample = () => {
+  const targetRef = useRef(null);
+
+  const handleInit = ({ fabric, createLeg }) => {
+    // Create a ${theme} creature with ${legCount} legs
+    
+    // Create a central body
+    const centerX = 400;
+    const centerY = 300;
+    
+    // Create a body point
+    const bodyPoint = new Point(centerX, centerY, { fixed: true });
+    bodyPoint.bodySize = ${bodySize};
+    fabric.addPoint(bodyPoint);
+    
+    // Create legs
+    const angleStep = 360 / ${legCount};
+    for (let i = 0; i < ${legCount}; i++) {
+      // Create leg segments
+      const angle = i * angleStep;
+      const segments = [];
+      for (let j = 0; j < ${segments}; j++) {
+        segments.push(${segmentLength});
+      }
+      
+      // Create the leg and get its target
+      const target = createLeg(centerX, centerY, segments, true);
+      
+      // Position the target in a circle around the body
+      const radians = (angle * Math.PI) / 180;
+      const targetX = centerX + Math.cos(radians) * 150;
+      const targetY = centerY + Math.sin(radians) * 150;
+      target.move(targetX, targetY);
+    }
+  };
+
+  // Optional: Add mouse interaction
+  const handleMouseMove = (e) => {
+    if (targetRef.current) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      targetRef.current.move(x, y);
+    }
+  };
+
+  return (
+    <div>
+      <FabricCanvas
+        width={800}
+        height={600}
+        onInit={handleInit}
+        iterations={${iterations}}
+      />
+    </div>
+  );
+};
+
+export default InverseKinematicsExample;`;
   };
 
   const styles = {
@@ -445,6 +515,39 @@ export const FabricDemo: React.FC<FabricDemoProps> = ({
     buttonRow: {
       display: 'flex',
       gap: '10px'
+    },
+    followingObjectsLayer: {
+      position: 'absolute' as const,
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      pointerEvents: 'none'
+    },
+    codeExport: {
+      marginTop: '20px',
+      padding: '15px',
+      background: '#f8f9fa',
+      borderRadius: '8px'
+    },
+    codeBlock: {
+      background: '#343a40',
+      color: '#f8f9fa',
+      padding: '15px',
+      borderRadius: '4px',
+      overflow: 'auto',
+      fontSize: '14px',
+      lineHeight: 1.5,
+      fontFamily: 'monospace'
+    },
+    copyButton: {
+      background: '#6c757d',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      padding: '8px 16px',
+      cursor: 'pointer',
+      marginTop: '10px'
     }
   };
   
@@ -597,6 +700,21 @@ export const FabricDemo: React.FC<FabricDemoProps> = ({
                 Reset Creature
               </button>
               
+              <button 
+                onClick={toggleCodeExport}
+                style={styles.button}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 123, 255, 0.3)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = '';
+                  e.currentTarget.style.boxShadow = '';
+                }}
+              >
+                {showCodeExport ? 'Hide Code' : 'Export Code'}
+              </button>
+              
               <div style={styles.buttonRow}>
                 <button 
                   onClick={handleToggleAutoFollow} 
@@ -683,6 +801,24 @@ export const FabricDemo: React.FC<FabricDemoProps> = ({
           />
         )}
       </div>
+      
+      {showCodeExport && (
+        <div style={styles.codeExport}>
+          <h3>Generated Code</h3>
+          <pre style={styles.codeBlock}>
+            {generateCode()}
+          </pre>
+          <button 
+            style={styles.copyButton}
+            onClick={() => {
+              navigator.clipboard.writeText(generateCode());
+              alert('Code copied to clipboard!');
+            }}
+          >
+            Copy to Clipboard
+          </button>
+        </div>
+      )}
       
       <div style={styles.instructions}>
         <h3 style={styles.instructionsTitle}>How It Works:</h3>
